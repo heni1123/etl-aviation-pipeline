@@ -6,98 +6,62 @@ import aiohttp
 from dotenv import dotenv_values
 
 class Orchestrator:
-    def __init__(self):
+    def __init__(self) -> None:
+        logging.basicConfig(level=logging.INFO)
         self.api_urls = {
             "src_opensky_states": "https://opensky-network.org/api/states/all",
             "src_adsbdb_callsign": "https://api.adsbdb.com/v0/callsign/{callsign}",
             "src_rest_countries": "https://restcountries.com/v3.1/alpha/{origin_country}"
         }
-        self.logger = logging.getLogger(__name__)
-        logging.basicConfig(level=logging.INFO)
 
     async def extract(self) -> List[Dict[str, Any]]:
-        self.logger.info("Starting extraction phase")
+        logging.info("Starting extraction phase")
         async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get(self.api_urls["src_opensky_states"]) as response:
-                    response.raise_for_status()
-                    opensky_data = await response.json()
-                    states = opensky_data.get('states', [])
-                    self.logger.info("Extraction completed successfully")
-                    return states
-            except Exception as e:
-                self.logger.error(f"Error during extraction: {e}")
-                raise
+            tasks = [
+                self.fetch_data(session, self.api_urls["src_opensky_states"]),
+            ]
+            primary_data = await asyncio.gather(*tasks)
+            if not primary_data[0]:
+                logging.error("Primary source extraction failed, aborting ETL process.")
+                raise Exception("Primary source extraction failed.")
+            logging.info("Extraction phase completed")
+            return primary_data[0]
 
-    async def enrich_callsign(self, states: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        self.logger.info("Starting callsign enrichment phase")
+    async def fetch_data(self, session: aiohttp.ClientSession, url: str) -> Optional[List[Dict[str, Any]]]:
+        try:
+            async with session.get(url) as response:
+                response.raise_for_status()
+                data = await response.json()
+                return data.get('states', [])
+        except Exception as e:
+            logging.error(f"Error fetching data from {url}: {e}")
+            return None
+
+    async def join(self, primary_List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        logging.info("Starting join phase")
+        enriched_data = []
         async with aiohttp.ClientSession() as session:
-            enriched_states = []
-            for state in states:
-                callsign = state.get('callsign')
+            for row in primary_data:
+                callsign = row.get('callsign')
                 if callsign:
-                    try:
-                        async with session.get(self.api_urls["src_adsbdb_callsign"].format(callsign=callsign)) as response:
-                            response.raise_for_status()
-                            callsign_data = await response.json()
-                            state.update(callsign_data.get('response', {}))
-                    except Exception as e:
-                        self.logger.warning(f"Enrichment failed for callsign {callsign}: {e}")
-                enriched_states.append(state)
-            self.logger.info("Callsight enrichment completed")
-            return enriched_states
+                    callsign_data = await self.fetch_data(session, self.api_urls["src_adsbdb_callsign"].format(callsign=callsign))
+                    if callsign_data:
+                        row.update(callsign_data.get('response', {}))
+                enriched_data.append(row)
+        logging.info("Join phase completed")
+        return enriched_data
 
-    async def enrich_country(self, states: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        self.logger.info("Starting country enrichment phase")
-        async with aiohttp.ClientSession() as session:
-            enriched_states = []
-            for state in states:
-                origin_country = state.get('origin_country')
-                if origin_country:
-                    try:
-                        async with session.get(self.api_urls["src_rest_countries"].format(origin_country=origin_country)) as response:
-                            response.raise_for_status()
-                            country_data = await response.json()
-                            state.update(country_data)
-                    except Exception as e:
-                        self.logger.warning(f"Enrichment failed for country {origin_country}: {e}")
-                enriched_states.append(state)
-            self.logger.info("Country enrichment completed")
-            return enriched_states
-
-    async def transform(self, states: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        self.logger.info("Starting transformation phase")
+    async def transform(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        logging.info("Starting transform phase")
         transformed_rows = []
-        for row in states:
-            transformed_row = {
-                "icao24": row.get("icao24"),
-                "callsign": row.get("callsign"),
-                "origin_country": row.get("origin_country"),
-                "time_position": row.get("time"),
-                "last_contact": row.get("last_contact"),
-                "longitude": row.get("longitude"),
-                "latitude": row.get("latitude"),
-                "baro_altitude": row.get("baro_altitude"),
-                "on_ground": row.get("on_ground"),
-                "velocity": row.get("velocity"),
-                "true_track": row.get("true_track"),
-                "vertical_rate": row.get("vertical_rate"),
-                "geo_altitude": row.get("geo_altitude"),
-                "squawk": row.get("squawk"),
-                "spi": row.get("spi"),
-                "callsign_iata": row.get("callsign_iata"),
-                "airline_name": row.get("airline_name"),
-                "airline_iata": row.get("airline_iata"),
-                "airline_icao": row.get("airline_icao"),
-                "dep_airport_iata": row.get("dep_airport_iata"),
-                "altitude_category": self.categorize_altitude(row),
-                "speed_category": self.categorize_speed(row)
-            }
-            transformed_rows.append(transformed_row)
-        self.logger.info("Transformation completed")
+        for row in rows:
+            row['altitude_category'] = self.categorize_altitude(row)
+            row['speed_category'] = self.categorize_speed(row)
+            transformed_rows.append(row)
+        logging.info("Transform phase completed")
         return transformed_rows
 
-    def categorize_altitude(self, row: Dict[str, Any]) -> Optional[str]:
+    def categorize_altitude(self, row: Dict[str, Any]) -> str:
         baro_altitude = row.get('baro_altitude')
         on_ground = row.get('on_ground')
         if baro_altitude is None or on_ground:
@@ -110,41 +74,33 @@ class Orchestrator:
             return 'Cruise Altitude'
         elif baro_altitude > 12500:
             return 'High Altitude'
-        return None
+        return 'Unknown'
 
-    def categorize_speed(self, row: Dict[str, Any]) -> Optional[str]:
+    def categorize_speed(self, row: Dict[str, Any]) -> str:
         velocity = row.get('velocity')
         on_ground = row.get('on_ground')
         if velocity is None or on_ground == 'Unknown/Ground':
             return 'Unknown/Ground'
-        elif velocity < 100:
-            return 'Slow'
-        elif 100 <= velocity < 300:
-            return 'Normal'
-        elif velocity >= 300:
-            return 'Fast'
-        return None
+        # Additional speed categorization logic can be added here
+        return 'Normal Speed'
 
     async def load(self, transformed_rows: List[Dict[str, Any]]) -> None:
-        self.logger.info("Starting load phase")
-        # Here you would implement the logic to load the transformed_rows into the database
-        # For example, using an async database library like asyncpg
-        self.logger.info("Load phase completed")
+        logging.info("Starting load phase")
+        # Implement the loading logic to the database here
+        # For example, using an async database library to insert the data
+        logging.info("Load phase completed")
 
     async def run(self) -> None:
         try:
-            states = await self.extract()
-            enriched_callsign_states = await self.enrich_callsign(states)
-            enriched_country_states = await self.enrich_country(enriched_callsign_states)
-            transformed_rows = await self.transform(enriched_country_states)
-            await self.load(transformed_rows)
+            primary_data = await self.extract()
+            joined_data = await self.join(primary_data)
+            transformed_data = await self.transform(joined_data)
+            await self.load(transformed_data)
         except Exception as e:
-            self.logger.error(f"ETL process failed: {e}")
+            logging.error(f"ETL process failed: {e}")
 
 if __name__ == "__main__":
     orchestrator = Orchestrator()
     asyncio.run(orchestrator.run())
     with open('.env.example', 'w') as f:
-        f.write("API_URL_OPENSKY=https://opensky-network.org/api/states/all\n")
-        f.write("API_URL_ADSBDDB=https://api.adsbdb.com/v0/callsign/{callsign}\n")
-        f.write("API_URL_REST_COUNTRIES=https://restcountries.com/v3.1/alpha/{origin_country}\n")
+        f.write("DATABASE_URL=postgresql://user:password@localhost:5432/analytics.flight_operations_enriched\n")
