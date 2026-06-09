@@ -70,4 +70,4 @@ class Transformer:
 
     def _br5_data_quality_flag(self, row: Dict[str, Any]) -> str:
         # Placeholder for data quality flag logic
-        return 'Valid' if row.get('icao24') else 'Invalid'  # Example logic for data quality flag
+        return 'Valid' if row.get('icao24') else 'Invalid'
