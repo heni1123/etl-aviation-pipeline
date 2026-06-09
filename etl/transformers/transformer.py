@@ -28,7 +28,7 @@ class Transformer:
         row['data_quality_flag'] = self._br5_data_quality_flag(row)
 
     def _br1_altitude_category(self, row: Dict[str, Any]) -> str:
-        if row.get('baro_altitude') is None or row.get('on_ground') is True:
+        if row.get('baro_altitude') is None or row.get('on_ground'):
             return 'Ground'
         elif 0 < row.get('baro_altitude') <= 3000:
             return 'Low Altitude'
@@ -41,7 +41,7 @@ class Transformer:
         return None
 
     def _br3_speed_category(self, row: Dict[str, Any]) -> str:
-        if row.get('velocity') is None or row.get('on_ground') == 'Unknown/Ground':
+        if row.get('velocity') is None or row.get('on_ground'):
             return 'Unknown/Ground'
         elif 0 < row.get('velocity') <= 80:
             return 'Taxi/Slow'
@@ -62,12 +62,11 @@ class Transformer:
             return 'Hijacking'
         elif row.get('squawk') == '2000':
             return 'VFR No Transponder'
-        elif row.get('spi') is True:
+        elif row.get('spi'):
             return 'Special Purpose'
-        elif row.get('squawk') is None or (row.get('squawk') != '7700' and row.get('spi') is not True):
-            return 'Normal'
-        return None
+        return 'Normal'
 
     def _br5_data_quality_flag(self, row: Dict[str, Any]) -> str:
-        # Placeholder for data quality flag logic
-        return 'Valid' if row.get('icao24') else 'Invalid'
+        if row.get('icao24') and row.get('callsign'):
+            return 'Valid'
+        return 'Invalid'
