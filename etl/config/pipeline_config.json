@@ -33,14 +33,14 @@
     "load_strategy": "truncate_insert"
   },
   "env_vars": [
+    "GITHUB_TOKEN",
     "GITHUB_OWNER",
-    "DB_HOST",
-    "DB_PORT",
     "DB_USER",
     "DB_PASSWORD",
     "DB_NAME",
-    "GITHUB_REPO",
-    "GITHUB_TOKEN"
+    "DB_PORT",
+    "DB_HOST",
+    "GITHUB_REPO"
   ],
   "rules": [
     "All credentials must reference env vars, never hardcoded values"
