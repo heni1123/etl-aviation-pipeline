@@ -31,15 +31,14 @@ class FlightOperationsLoader:
                 )
             conn.commit()
             logger.info(f"Loaded {len(self.rows)} rows into analytics.flight_operations_enriched")
-            self.log_audit_record(len(self.rows))
+            self.audit_pipeline_run(len(self.rows))
         except Exception as e:
             logger.error(f"Error loading {e}")
             conn.rollback()
-            raise
         finally:
             conn.close()
 
-    def log_audit_record(self, rows_loaded: int) -> None:
+    def audit_pipeline_run(self, rows_loaded: int) -> None:
         try:
             conn = psycopg2.connect(
                 host=os.environ["DB_HOST"],
@@ -55,6 +54,6 @@ class FlightOperationsLoader:
                 )
             conn.commit()
         except Exception as e:
-            logger.error(f"Error logging audit record: {e}")
+            logger.error(f"Error auditing pipeline run: {e}")
         finally:
             conn.close()
