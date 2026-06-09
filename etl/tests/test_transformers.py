@@ -1,7 +1,7 @@
 import pytest
 import httpx
 from unittest.mock import patch
-from your_etl_module import transform_data  # Replace with your actual import
+from your_module import transform_data  # Replace with your actual import
 
 @pytest.mark.asyncio
 async def test_altitude_category():
@@ -14,7 +14,7 @@ async def test_altitude_category():
     ]
     
     for case in test_cases:
-        result = transform_data(case)
+        result = await transform_data(case)
         assert result['altitude_category'] == case['expected']
 
 @pytest.mark.asyncio
@@ -28,7 +28,7 @@ async def test_speed_category():
     ]
     
     for case in test_cases:
-        result = transform_data(case)
+        result = await transform_data(case)
         assert result['speed_category'] == case['expected']
 
 @pytest.mark.asyncio
@@ -43,16 +43,18 @@ async def test_emergency_flag():
     ]
     
     for case in test_cases:
-        result = transform_data(case)
+        result = await transform_data(case)
         assert result['emergency_flag'] == case['expected']
 
 @pytest.mark.asyncio
 async def test_data_quality_flag():
     test_cases = [
-        {'data_field': None, 'expected': 'Invalid'},
-        {'data_field': 'valid_data', 'expected': 'Valid'},
+        {'baro_altitude': None, 'velocity': None, 'expected': 'Low Quality'},
+        {'baro_altitude': 1000, 'velocity': 200, 'expected': 'High Quality'},
+        {'baro_altitude': 5000, 'velocity': None, 'expected': 'Low Quality'},
+        {'baro_altitude': None, 'velocity': 150, 'expected': 'Low Quality'},
     ]
     
     for case in test_cases:
-        result = transform_data(case)
+        result = await transform_data(case)
         assert result['data_quality_flag'] == case['expected']
