@@ -7,23 +7,23 @@ class AuthenticationError(Exception):
     pass
 
 class SrcRestCountriesExtractor:
-    BASE_URL = "https://restcountries.com/v3.1/alpha/{origin_country}"
-    HEADERS = {"Accept": "application/json"}
-    RETRY_ATTEMPTS = 3
-    RATE_LIMIT_WAIT = 60
-
     def __init__(self) -> None:
+        self.url_template = "https://restcountries.com/v3.1/alpha/{origin_country}"
+        self.params = {
+            "fields": "name,cca2,region,subregion,population,area,capital,continents"
+        }
+        self.logger = logging.getLogger(__name__)
         logging.basicConfig(level=logging.INFO)
 
     async def fetch_country_data(self, origin_country: str) -> Dict:
         async with httpx.AsyncClient() as client:
-            for attempt in range(self.RETRY_ATTEMPTS):
+            for attempt in range(3):
                 try:
-                    logging.info(f"Fetching data for {origin_country} (Attempt {attempt + 1})")
+                    self.logger.info(f"Fetching data for {origin_country}")
                     resp = await client.get(
-                        self.BASE_URL.format(origin_country=origin_country),
-                        params={"fields": "name,cca2,region,subregion,population,area,capital,continents"},
-                        headers=self.HEADERS,
+                        self.url_template.format(origin_country=origin_country),
+                        params=self.params,
+                        headers={"Accept": "application/json"},
                     )
                     resp.raise_for_status()
                     data = resp.json()
@@ -32,27 +32,21 @@ class SrcRestCountriesExtractor:
                     if e.response.status_code in {401, 403}:
                         raise AuthenticationError("Authentication failed") from e
                     elif e.response.status_code == 429:
-                        logging.warning("Rate limit exceeded, waiting for 60 seconds before retrying...")
-                        await asyncio.sleep(self.RATE_LIMIT_WAIT)
+                        self.logger.warning("Rate limit exceeded, waiting 60 seconds before retrying...")
+                        await asyncio.sleep(60)
                     else:
-                        logging.error(f"HTTP error occurred: {e}")
+                        self.logger.error(f"HTTP error occurred: {e}")
                         raise
                 except Exception as e:
-                    logging.error(f"An error occurred: {e}")
+                    self.logger.error(f"An error occurred: {e}")
                     raise
-            logging.error("Max retry attempts reached")
-            raise Exception("Failed to fetch country data after multiple attempts")
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+        return {}
 
     async def extract(self, origin_countries: List[str]) -> List[Dict]:
         results = []
         for country in origin_countries:
-            try:
-                country_data = await self.fetch_country_data(country)
+            country_data = await self.fetch_country_data(country)
+            if country_data:
                 results.append(country_data)
-            except Exception as e:
-                logging.error(f"Failed to extract data for {country}: {e}")
         return results
-
-# Example usage:
-# extractor = SrcRestCountriesExtractor()
-# asyncio.run(extractor.extract(['US', 'CA']))
