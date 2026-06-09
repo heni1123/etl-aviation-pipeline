@@ -1,15 +1,15 @@
 # AVIATION-OPS-001 ETL Pipeline Documentation
 
 ## Architecture Overview
-The AVIATION-OPS-001 ETL pipeline is designed to extract, transform, and load aviation data into the `analytics.flight_operations_enriched` PostgreSQL database. The pipeline integrates data from multiple sources, including the OpenSky Network, ADSBDB, and REST Countries API, to provide enriched flight operation insights.
+The AVIATION-OPS-001 ETL pipeline is designed to extract, transform, and load aviation operational data into the `analytics.flight_operations_enriched` PostgreSQL database. The pipeline integrates data from multiple sources, including the OpenSky Network, ADSBDB, and REST Countries API, to provide enriched flight operation insights.
 
 ## Setup Instructions
 To set up the environment for the AVIATION-OPS-001 ETL pipeline, follow these steps:
 
 1. **Install Required Packages**
-   Ensure you have Python 3.8 or higher installed. Use pip to install the required packages:
+   Ensure you have Python 3.8 or higher installed. Use pip to install the necessary packages:
    ```bash
-   pip install -r requirements.txt
+   pip install requests psycopg2-binary python-dotenv
    ```
 
 2. **Environment Configuration**
@@ -21,12 +21,12 @@ To set up the environment for the AVIATION-OPS-001 ETL pipeline, follow these st
 ## How to Run the Pipeline
 To execute the ETL pipeline, run the following command in your terminal:
 ```bash
-python main.py
+python etl_pipeline.py
 ```
-Ensure that your PostgreSQL database is running and accessible.
+Ensure that the database is running and accessible as specified in the `.env` file.
 
 ## Table Schema Summary
-The target table `analytics.flight_operations_enriched` contains 43 columns with the following schema:
+The target table `analytics.flight_operations_enriched` contains the following columns:
 
 | Column Name          | Data Type |
 |----------------------|-----------|
@@ -50,14 +50,9 @@ The target table `analytics.flight_operations_enriched` contains 43 columns with
 | airline_iata         | TEXT      |
 | airline_icao         | TEXT      |
 | dep_airport_iata     | TEXT      |
+| arr_airport_iata     | TEXT      |
+| altitude_category     | TEXT      |
+| speed_category        | TEXT      |
 | ...                  | ...       |
 
-The table is designed to accommodate various aviation data points, ensuring comprehensive analysis capabilities.
-
-## Business Rules
-The pipeline implements the following business rules:
-
-1. **Altitude Category**: Categorizes altitude based on barometric altitude.
-2. **Speed Category**: Categorizes speed based on velocity.
-
-This documentation provides a comprehensive overview of the AVIATION-OPS-001 ETL pipeline, ensuring users can effectively set up and run the pipeline while understanding its architecture and data structure.
+The table consists of 43 columns in total, with various data types including TEXT, INTEGER, FLOAT, and BOOLEAN. The pipeline applies 4 business rules to categorize altitude and speed based on the provided data.
