@@ -12,7 +12,7 @@ To set up the environment for the AVIATION-OPS-001 ETL pipeline, follow these st
    pip install -r requirements.txt
    ```
 
-2. **Environment Variables**
+2. **Environment Configuration**
    Create a `.env` file in the root directory of the project and add the following environment variables:
    ```
    DATABASE_URL=postgresql://username:password@localhost:5432/analytics
@@ -26,7 +26,7 @@ python main.py
 Ensure that your PostgreSQL database is running and accessible.
 
 ## Table Schema Summary
-The target table `analytics.flight_operations_enriched` contains the following columns:
+The target table `analytics.flight_operations_enriched` contains 43 columns with the following schema:
 
 | Column Name          | Data Type |
 |----------------------|-----------|
@@ -52,7 +52,7 @@ The target table `analytics.flight_operations_enriched` contains the following c
 | dep_airport_iata     | TEXT      |
 | ...                  | ...       |
 
-The table consists of 43 columns in total, with various data types including TEXT, INTEGER, FLOAT, and BOOLEAN. 
+The table is designed to accommodate various aviation data points, ensuring comprehensive analysis capabilities.
 
 ## Business Rules
 The pipeline implements the following business rules:
@@ -60,4 +60,4 @@ The pipeline implements the following business rules:
 1. **Altitude Category**: Categorizes altitude based on barometric altitude.
 2. **Speed Category**: Categorizes speed based on velocity.
 
-This documentation provides a comprehensive overview of the AVIATION-OPS-001 ETL pipeline, including setup instructions, execution guidelines, and a summary of the target table schema.
+This documentation provides a comprehensive overview of the AVIATION-OPS-001 ETL pipeline, ensuring users can effectively set up and run the pipeline while understanding its architecture and data structure.
