@@ -1,0 +1,29 @@
+{
+  "sources": [],
+  "targets": [
+    {
+      "name": "public.target_data",
+      "type": "postgresql",
+      "connection": {
+        "host": "localhost",
+        "port": 5432,
+        "database": "your_database",
+        "user": "your_user",
+        "password": "${DB_PASSWORD}"
+      }
+    }
+  ],
+  "pipeline_settings": {
+    "load_strategies": [],
+    "schedule": "0 */2 * * *"
+  },
+  "retry_policies": {
+    "max_retries": 3,
+    "retry_interval": 300
+  },
+  "monitoring": {
+    "health_checks": true,
+    "metrics": true,
+    "alerts": true
+  }
+}
