@@ -2,45 +2,51 @@ import httpx
 import asyncio
 import logging
 from typing import List, Dict
+from httpx import HTTPStatusError
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class AuthenticationError(Exception):
     pass
 
 class SrcOpenskyStatesExtractor:
-    def __init__(self) -> None:
-        self.url = "https://opensky-network.org/api/states/all"
-        self.params = {
+    BASE_URL = "https://opensky-network.org/api/states/all"
+    RETRY_ATTEMPTS = 3
+    BACKOFF_FACTOR = 2
+
+    async def fetch_data(self) -> List[Dict]:
+        params = {
             "lamin": "28.0",
             "lomin": "-10.0",
             "lamax": "47.0",
             "lomax": "37.0"
         }
-        logging.basicConfig(level=logging.INFO)
-
-    async def fetch_data(self) -> List[Dict]:
-        retries = 3
-        for attempt in range(retries):
-            async with httpx.AsyncClient() as client:
+        
+        async with httpx.AsyncClient() as client:
+            for attempt in range(self.RETRY_ATTEMPTS):
                 try:
-                    logging.info("Sending request to %s with params %s", self.url, self.params)
-                    resp = await client.get(self.url, params=self.params, headers={"Accept": "application/json"})
-                    resp.raise_for_status()
-                    data = resp.json()
-                    logging.info("Request successful, latency: %d ms", resp.elapsed.total_seconds() * 1000)
+                    logger.info("Sending request to %s with params %s", self.BASE_URL, params)
+                    response = await client.get(self.BASE_URL, params=params, headers={"Accept": "application/json"})
+                    response.raise_for_status()
+                    data = response.json()
+                    logger.info("Request successful, latency: %d ms", response.elapsed.total_seconds() * 1000)
                     return data.get('states', [])
-                except httpx.HTTPStatusError as e:
+                except HTTPStatusError as e:
                     if e.response.status_code in {401, 403}:
                         raise AuthenticationError("Authentication failed") from e
                     elif e.response.status_code == 429:
-                        logging.warning("Rate limit exceeded, waiting for 60 seconds before retrying...")
+                        logger.warning("Rate limit exceeded, waiting for 60 seconds before retrying...")
                         await asyncio.sleep(60)
                     else:
-                        logging.error("HTTP error occurred: %s", e)
+                        logger.error("HTTP error occurred: %s", e)
                         raise
                 except Exception as e:
-                    logging.error("An error occurred: %s", e)
-                    if attempt < retries - 1:
-                        await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                    logger.error("An error occurred: %s", e)
+                    if attempt < self.RETRY_ATTEMPTS - 1:
+                        backoff_time = self.BACKOFF_FACTOR ** attempt
+                        logger.warning("Retrying in %d seconds...", backoff_time)
+                        await asyncio.sleep(backoff_time)
                     else:
                         raise
-        return []  # Return an empty list if all retries fail
+        return []
