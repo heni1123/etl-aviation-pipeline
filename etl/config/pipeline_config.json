@@ -1,0 +1,48 @@
+{
+  "task": "Generate pipeline_config.json with sources, target, settings",
+  "sources": [
+    {
+      "id": "src_opensky_states",
+      "url": "https://opensky-network.org/api/states/all",
+      "method": "GET",
+      "params": {
+        "lamin": "28.0",
+        "lomin": "-10.0",
+        "lamax": "47.0",
+        "lomax": "37.0"
+      }
+    },
+    {
+      "id": "src_adsbdb_callsign",
+      "url": "https://api.adsbdb.com/v0/callsign/{callsign}",
+      "method": "GET",
+      "params": {}
+    },
+    {
+      "id": "src_rest_countries",
+      "url": "https://restcountries.com/v3.1/alpha/{origin_country}",
+      "method": "GET",
+      "params": {
+        "fields": "name,cca2,region,subregion,population,area,capital,continents"
+      }
+    }
+  ],
+  "target": {
+    "schema": "analytics",
+    "table": "flight_operations_enriched",
+    "load_strategy": "truncate_insert"
+  },
+  "env_vars": [
+    "DB_NAME",
+    "DB_PORT",
+    "DB_USER",
+    "DB_HOST",
+    "GITHUB_OWNER",
+    "GITHUB_TOKEN",
+    "DB_PASSWORD",
+    "GITHUB_REPO"
+  ],
+  "rules": [
+    "All credentials must reference env vars, never hardcoded values"
+  ]
+}
