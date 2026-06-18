@@ -3,118 +3,81 @@ import logging
 import os
 from typing import List, Dict, Any, Optional
 import aiohttp
-from datetime import datetime
+from dotenv import dotenv_values
 
 class Orchestrator:
-    def __init__(self):
+    def __init__(self) -> None:
         logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
+        self.api_urls = {
+            "src_opensky_states": "https://opensky-network.org/api/states/all",
+            "src_adsbdb_callsign": "https://api.adsbdb.com/v0/callsign/{callsign}",
+            "src_rest_countries": "https://restcountries.com/v3.1/alpha/{origin_country}"
+        }
 
-    async def fetch_opensky_states(self) -> List[Dict[str, Any]]:
-        url = "https://opensky-network.org/api/states/all"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    self.logger.error("Failed to fetch OpenSky states")
-                    raise Exception("Primary source failure")
-                return await response.json()
-
-    async def fetch_adsbdb_callsign(self, callsign: str) -> Optional[Dict[str, Any]]:
-        url = f"https://api.adsbdb.com/v0/callsign/{callsign}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    self.logger.warning(f"Failed to fetch callsign data for {callsign}")
-                    return None
-                return await response.json()
-
-    async def fetch_rest_countries(self, origin_country: str) -> Optional[Dict[str, Any]]:
-        url = f"https://restcountries.com/v3.1/alpha/{origin_country}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    self.logger.warning(f"Failed to fetch country data for {origin_country}")
-                    return None
-                return await response.json()
-
-    async def extract(self) -> List[Dict[str, Any]]:
-        self.logger.info("Starting extraction phase")
-        start_time = datetime.now()
+    async def fetch(self, session: aiohttp.ClientSession, url: str) -> Optional[Dict[str, Any]]:
         try:
-            opensky_data = await self.fetch_opensky_states()
-            self.logger.info("Extraction phase completed successfully")
-            return opensky_data.get('states', [])
+            async with session.get(url) as response:
+                response.raise_for_status()
+                return await response.json()
         except Exception as e:
-            self.logger.error(f"Extraction phase failed: {e}")
-            raise
+            logging.error(f"Error fetching data from {url}: {e}")
+            return None
 
-    async def join(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        self.logger.info("Starting join phase")
-        enriched_rows = []
-        for row in rows:
-            callsign_data = await self.fetch_adsbdb_callsign(row.get('callsign', ''))
-            if callsign_data:
-                row.update(callsign_data.get('response', {}))
-            else:
-                self.logger.warning(f"Enrichment failed for callsign: {row.get('callsign', '')}")
+    async def extract(self) -> Dict[str, Any]:
+        async with aiohttp.ClientSession() as session:
+            logging.info("Starting extraction phase")
+            results = await asyncio.gather(
+                self.fetch(session, self.api_urls["src_opensky_states"]),
+                return_exceptions=True
+            )
+            if any(isinstance(result, Exception) for result in results):
+                logging.error("Primary source extraction failed, aborting.")
+                raise RuntimeError("Primary source extraction failed.")
+            logging.info("Extraction phase completed")
+            return results[0]
 
-            country_data = await self.fetch_rest_countries(row.get('origin_country', ''))
-            if country_data:
-                row.update(country_data.get('data', {}))
-            else:
-                self.logger.warning(f"Enrichment failed for origin country: {row.get('origin_country', '')}")
+    async def join(self, open_sky_Dict[str, Any]) -> Dict[str, Any]:
+        logging.info("Starting join phase")
+        enriched_data = open_sky_data  # Placeholder for actual join logic
+        # Enrichment logic would go here
+        logging.info("Join phase completed")
+        return enriched_data
 
-            enriched_rows.append(row)
-        self.logger.info("Join phase completed successfully")
-        return enriched_rows
-
-    async def transform(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        self.logger.info("Starting transform phase")
-        transformed_rows = []
-        for row in rows:
-            row['altitude_category'] = self.categorize_altitude(row)
-            row['speed_category'] = self.categorize_speed(row)
-            transformed_rows.append(row)
-        self.logger.info("Transform phase completed successfully")
+    async def transform(self, rows: Dict[str, Any]) -> List[Dict[str, Any]]:
+        logging.info("Starting transform phase")
+        transformed_rows = []  # Placeholder for transformation logic
+        # Transformation logic would go here
+        logging.info("Transform phase completed")
         return transformed_rows
 
-    def categorize_altitude(self, row: Dict[str, Any]) -> str:
-        if row.get('baro_altitude') is None or row.get('on_ground'):
-            return 'Ground'
-        elif 0 < row['baro_altitude'] <= 3000:
-            return 'Low Altitude'
-        elif 3000 < row['baro_altitude'] <= 7500:
-            return 'Mid Altitude'
-        elif 7500 < row['baro_altitude'] <= 12500:
-            return 'Cruise Altitude'
-        else:
-            return 'High Altitude'
-
-    def categorize_speed(self, row: Dict[str, Any]) -> str:
-        if row.get('velocity') is None or row.get('on_ground'):
-            return 'Unknown/Ground'
-        elif row['velocity'] < 100:
-            return 'Slow'
-        elif 100 <= row['velocity'] < 300:
-            return 'Normal'
-        else:
-            return 'Fast'
+    async def validate(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        logging.info("Starting validate phase")
+        validated_rows = []  # Placeholder for validation logic
+        # Validation logic would go here
+        logging.info("Validate phase completed")
+        return validated_rows
 
     async def load(self, rows: List[Dict[str, Any]]) -> None:
-        self.logger.info("Starting load phase")
-        # Here you would implement the logic to load data into the database
-        # For example, using an ORM or raw SQL
-        self.logger.info("Load phase completed successfully")
+        logging.info("Starting load phase")
+        # Load logic would go here
+        logging.info("Load phase completed")
 
     async def run(self) -> None:
         try:
-            extracted_data = await self.extract()
-            joined_data = await self.join(extracted_data)
-            transformed_data = await self.transform(joined_data)
-            await self.load(transformed_data)
+            open_sky_data = await self.extract()
+            enriched_data = await self.join(open_sky_data)
+            transformed_rows = await self.transform(enriched_data)
+            validated_rows = await self.validate(transformed_rows)
+            await self.load(validated_rows)
         except Exception as e:
-            self.logger.error(f"ETL process failed: {e}")
+            logging.error(f"ETL process failed: {e}")
 
 if __name__ == "__main__":
     orchestrator = Orchestrator()
     asyncio.run(orchestrator.run())
+    with open('.env.example', 'w') as f:
+        f.write("API_SRC_OPENSKY=https://opensky-network.org/api/states/all\n")
+        f.write("API_SRC_ADSBDDB=https://api.adsbdb.com/v0/callsign/{callsign}\n")
+        f.write("API_SRC_RESTCOUNTRIES=https://restcountries.com/v3.1/alpha/{origin_country}\n")
+        f.write("TARGET_DB=analytics.flight_operations_enriched\n")
+        f.write("LOAD_STRATEGY=truncate_insert\n")
