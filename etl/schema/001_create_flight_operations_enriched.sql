@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS analytics.flight_operations_enriched (
     is_in_flight                        BOOLEAN,
     route_distance_km                   NUMERIC,
     is_international                    BOOLEAN,
-    last_contact_ts                     TIMESTAMPTZ NOT NULL,
-    loaded_at                           TIMESTAMPTZ NOT NULL,
+    last_contact_ts                     TIMESTAMPTZ,
+    loaded_at                           TIMESTAMPTZ,
     PRIMARY KEY (icao24)
 );
