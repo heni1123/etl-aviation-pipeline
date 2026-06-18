@@ -52,7 +52,7 @@ class Transformer:
         return None
 
     def _br4_emergency_flag(self, row: dict) -> str:
-        """BR4: Flags emergency situations based on squawk codes"""
+        """BR4: Flags emergency situations based on squawk code"""
         if row.get('squawk') == '7700':
             return 'General Emergency'
         elif row.get('squawk') == '7600':
@@ -63,12 +63,10 @@ class Transformer:
             return 'VFR No Transponder'
         elif row.get('spi') is True:
             return 'Special Purpose'
-        elif row.get('squawk') is None or row.get('spi') is not True:
-            return 'Normal'
-        return None
+        return 'Normal'
 
     def _br5_data_quality_flag(self, row: dict) -> str:
-        """BR5: Flags data quality based on various conditions"""
-        if row.get('icao24') is None or row.get('callsign') is None:
-            return 'Missing Required Fields'
-        return 'Data Quality Good'
+        """BR5: Assesses data quality based on various conditions"""
+        if row.get('icao24') is not None:
+            return 'Valid'
+        return 'Invalid'
