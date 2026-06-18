@@ -1,86 +1,62 @@
 # AVIATION-OPS-001 ETL Project
 
 ## Architecture Overview
-The AVIATION-OPS-001 project is designed to extract, transform, and load aviation data into the `analytics.flight_operations_enriched` PostgreSQL database. The pipeline integrates data from multiple sources, including the OpenSky Network, ADSBDB, and REST Countries API, to provide enriched flight operation insights.
+The AVIATION-OPS-001 project is designed to extract, transform, and load aviation data into the `analytics.flight_operations_enriched` PostgreSQL database. The ETL pipeline integrates data from multiple sources, including the OpenSky Network, ADSBDB, and REST Countries API, to provide enriched flight operation insights.
 
 ## Setup Instructions
+To set up the project, follow these steps:
 
-### Prerequisites
-- Python 3.8 or higher
-- PostgreSQL database
-
-### Installation
-1. Clone the repository:
-   ```
-   git clone https://github.com/your-repo/aviation-ops-001.git
-   cd aviation-ops-001
-   ```
-
-2. Install required packages:
-   ```
+1. **Install Required Packages**
+   Ensure you have Python 3.8 or higher installed. Use pip to install the required packages:
+   ```bash
    pip install -r requirements.txt
    ```
 
-3. Set up environment variables:
-   Create a `.env` file in the root directory with the following content:
+2. **Environment Configuration**
+   Create a `.env` file in the root directory of the project and add the following environment variables:
    ```
-   DATABASE_URL=postgresql://username:password@localhost:5432/your_database
+   DATABASE_URL=postgresql://username:password@localhost:5432/analytics
    ```
 
 ## How to Run the Pipeline
 To execute the ETL pipeline, run the following command in your terminal:
-```
+```bash
 python main.py
 ```
-Ensure that your PostgreSQL database is running and accessible.
+This command will initiate the extraction of data from the specified APIs, apply the necessary transformations, and load the data into the target PostgreSQL database.
 
 ## Table Schema Summary
-The target table `analytics.flight_operations_enriched` contains the following columns:
+The `analytics.flight_operations_enriched` table consists of 43 columns with the following schema:
 
-| Column Name          | Data Type | Nullable |
-|----------------------|-----------|----------|
-| icao24               | TEXT      | NO       |
-| callsign             | TEXT      | YES      |
-| origin_country       | TEXT      | YES      |
-| time_position        | INTEGER   | YES      |
-| last_contact         | INTEGER   | YES      |
-| longitude            | FLOAT     | YES      |
-| latitude             | FLOAT     | YES      |
-| baro_altitude       | FLOAT     | YES      |
-| on_ground            | BOOLEAN   | YES      |
-| velocity             | FLOAT     | YES      |
-| true_track           | FLOAT     | YES      |
-| vertical_rate        | FLOAT     | YES      |
-| geo_altitude         | FLOAT     | YES      |
-| squawk               | TEXT      | YES      |
-| spi                  | BOOLEAN   | YES      |
-| callsign_iata        | TEXT      | YES      |
-| airline_name         | TEXT      | YES      |
-| airline_iata         | TEXT      | YES      |
-| airline_icao         | TEXT      | YES      |
-| dep_airport_iata     | TEXT      | YES      |
-| ...                  | ...       | ...      |
-
-## Data Sources
-The pipeline integrates data from the following sources:
-
-1. **OpenSky Network**
-   - **URL**: [OpenSky API](https://opensky-network.org/api/states/all)
-   - **Status**: Success
-
-2. **ADSBDB**
-   - **URL**: [ADSBDB API](https://api.adsbdb.com/v0/callsign/{callsign})
-   - **Status**: Success
-
-3. **REST Countries**
-   - **URL**: [REST Countries API](https://restcountries.com/v3.1/alpha/{origin_country})
-   - **Status**: Success
+| Column Name          | Data Type |
+|----------------------|-----------|
+| icao24               | TEXT      |
+| callsign             | TEXT      |
+| origin_country       | TEXT      |
+| time_position        | INTEGER   |
+| last_contact         | INTEGER   |
+| longitude            | FLOAT     |
+| latitude             | FLOAT     |
+| baro_altitude       | FLOAT     |
+| on_ground            | BOOLEAN   |
+| velocity             | FLOAT     |
+| true_track           | FLOAT     |
+| vertical_rate        | FLOAT     |
+| geo_altitude         | FLOAT     |
+| squawk               | TEXT      |
+| spi                  | BOOLEAN   |
+| callsign_iata        | TEXT      |
+| airline_name         | TEXT      |
+| airline_iata         | TEXT      |
+| airline_icao         | TEXT      |
+| dep_airport_iata     | TEXT      |
+| ...                  | ...       |
 
 ## Business Rules
-The ETL process applies the following business rules:
+The following business rules are applied during the transformation process:
 
 1. **Altitude Category**: Categorizes altitude based on barometric altitude.
 2. **Speed Category**: Categorizes speed based on velocity.
-3. **Additional rules**: Further business logic applied as necessary.
+3. **Additional rules**: Further business rules are defined to enhance data quality and integrity.
 
-This documentation provides a comprehensive overview of the AVIATION-OPS-001 ETL project, ensuring that developers and stakeholders can effectively understand and utilize the pipeline.
+This documentation provides a comprehensive overview of the AVIATION-OPS-001 ETL project, including setup instructions, execution guidelines, and schema details.
