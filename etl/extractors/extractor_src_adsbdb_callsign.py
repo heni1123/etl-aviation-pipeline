@@ -4,42 +4,51 @@ import logging
 from typing import List, Dict
 from httpx import HTTPStatusError
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 class AuthenticationError(Exception):
     pass
 
 class SrcAdsbdbCallsignExtractor:
-    BASE_URL = "https://api.adsbdb.com/v0/callsign/{callsign}"
-    
-    async def fetch_callsign_data(self, callsign: str) -> List[Dict]:
-        attempts = 0
-        while attempts < 3:
-            async with httpx.AsyncClient() as client:
+    def __init__(self, callsigns: List[str]) -> None:
+        self.callsigns = callsigns
+        self.url_template = "https://api.adsbdb.com/v0/callsign/{callsign}"
+        self.logger = logging.getLogger(__name__)
+
+    async def fetch_callsign_data(self, callsign: str) -> Dict:
+        async with httpx.AsyncClient() as client:
+            for attempt in range(3):
                 try:
-                    logger.info(f"Fetching data for callsign: {callsign}")
+                    self.logger.info(f"Fetching data for callsign: {callsign}")
                     resp = await client.get(
-                        self.BASE_URL.format(callsign=callsign),
-                        params={},
+                        self.url_template.format(callsign=callsign),
                         headers={"Accept": "application/json"},
                     )
                     resp.raise_for_status()
                     data = resp.json()
-                    logger.info(f"Successfully fetched data for callsign: {callsign}")
-                    return data.get('response', [])
+                    return data['response']
                 except HTTPStatusError as e:
                     if e.response.status_code == 429:
-                        logger.warning("Rate limit exceeded, waiting for 60 seconds before retrying...")
+                        self.logger.warning("Rate limit exceeded, waiting 60 seconds before retrying.")
                         await asyncio.sleep(60)
-                        attempts += 1
                     elif e.response.status_code in {401, 403}:
-                        raise AuthenticationError("Authentication failed, check your credentials.")
+                        raise AuthenticationError("Authentication failed.")
                     else:
-                        logger.error(f"HTTP error occurred: {e}")
-                        break
+                        self.logger.error(f"HTTP error occurred: {e}")
+                        raise
                 except Exception as e:
-                    logger.error(f"An error occurred: {e}")
-                    break
-        logger.error(f"Failed to fetch data for callsign: {callsign} after {attempts} attempts.")
-        return []
+                    self.logger.error(f"An error occurred: {e}")
+                    raise
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+
+    async def extract(self) -> List[Dict]:
+        results = []
+        for callsign in self.callsigns:
+            try:
+                data = await self.fetch_callsign_data(callsign)
+                results.append(data)
+            except Exception as e:
+                self.logger.error(f"Failed to extract data for callsign {callsign}: {e}")
+        return results
+
+# Example usage:
+# extractor = SrcAdsbdbCallsignExtractor(callsigns=["AAL123", "DAL456"])
+# asyncio.run(extractor.extract())
